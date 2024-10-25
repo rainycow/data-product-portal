@@ -108,7 +108,7 @@ Execute `python -m app.db_tool --help` from the `backend` folder to receive the 
 #### Structure
 In order to initialize your database with the correct structure, execute the command below from the backend folder.
  ```sh
-  python -m app.db_tool init
+  python3 -m app.db_tool init
   ```
 
 #### Sample Data

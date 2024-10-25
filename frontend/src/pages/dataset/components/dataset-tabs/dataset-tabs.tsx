@@ -1,16 +1,16 @@
+import dataProductOutlineIcon from '@/assets/icons/data-product-outline-icon.svg?react';
+import { LoadingSpinner } from '@/components/loading/loading-spinner/loading-spinner.tsx';
+import { DataProductTab } from '@/pages/dataset/components/dataset-tabs/data-product-tab/data-product-tab.tsx';
+import Icon, { HistoryOutlined, InfoCircleOutlined, PartitionOutlined, TeamOutlined } from '@ant-design/icons';
 import { Tabs } from 'antd';
 import { ReactNode, useMemo } from 'react';
-import styles from './dataset-tabs.module.scss';
-import Icon, { HistoryOutlined, InfoCircleOutlined, PartitionOutlined, TeamOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { ReactFlowProvider } from 'reactflow';
+import { AboutTab } from './about-tab/about-tab.tsx';
+import styles from './dataset-tabs.module.scss';
 import { ExplorerTab } from './explorer-tab/explorer-tab';
 import { HistoryTab } from './history-tab/history-tab';
-import { DataProductTab } from '@/pages/dataset/components/dataset-tabs/data-product-tab/data-product-tab.tsx';
-import { LoadingSpinner } from '@/components/loading/loading-spinner/loading-spinner.tsx';
-import dataProductOutlineIcon from '@/assets/icons/data-product-outline-icon.svg?react';
-import { AboutTab } from './about-tab/about-tab.tsx';
 import { TeamTab } from './team-tab/team-tab.tsx';
-import { ReactFlowProvider } from 'reactflow';
 
 type Props = {
     datasetId: string;
@@ -45,6 +45,7 @@ export function DatasetTabs({ datasetId, isLoading }: Props) {
             },
             {
                 label: t('Data Products'),
+                // TODO list lineage data here
                 key: TabKeys.DataProduct,
                 icon: <Icon component={dataProductOutlineIcon} />,
                 children: <DataProductTab datasetId={datasetId} />,

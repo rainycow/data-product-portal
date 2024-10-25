@@ -33,6 +33,11 @@ class DataProductGet(ORMModel):
     business_area: BusinessArea
 
 
+class ModifiedDataProductGet(ORMModel):
+    id: UUID
+    name: str
+
+
 class DataProductsGet(DataProductGet):
     id: UUID
     status: DataProductStatus

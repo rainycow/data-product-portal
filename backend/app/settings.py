@@ -8,11 +8,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "data_product_portal_test"
     POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str
-    POSTGRES_SERVER: str
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_SERVER: str = "localhost"
 
     # Other
     CORS_ALLOWED_ORIGINS: str = ""

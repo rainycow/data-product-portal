@@ -1,8 +1,9 @@
 export enum ApiUrl {
     DataProducts = '/api/data_products',
     DataProductGet = '/api/data_products/:dataProductId',
+    // DataProductGet = '/api/lineage/',
     DataProductType = '/api/data_product_types',
-    DataProductSignInUrl = '/api/data_products/:dataProductId/signin_url',
+    DataProductSignInUrl = 'https://dbc-8ccb2fdc-c542.cloud.databricks.com',
     DataProductConveyorNotebookUrl = '/api/data_products/:dataProductId/conveyor_notebook_url',
     DataProductConveyorIdeUrl = '/api/data_products/:dataProductId/conveyor_ide_url',
     DataProductDataset = '/api/data_products/:dataProductId/dataset/:datasetId',
@@ -31,6 +32,19 @@ export enum ApiUrl {
 
 export type DynamicPathParams = 'dataProductId' | 'userId' | 'datasetId' | 'datasetLinkId' | 'membershipId';
 
-export function buildUrl(url: string, pathParams: Record<DynamicPathParams | string, string>): string {
-    return Object.keys(pathParams).reduce((acc, key) => acc.replace(`:${key}`, pathParams[key]), url);
+export function buildUrl(url: string, pathParams: Partial<Record<DynamicPathParams | string, string>>): string {
+    const builtUrl = Object.keys(pathParams).reduce((acc, key) => {
+        if (pathParams[key]) {
+            return acc.replace(`/:${key}`, `/${pathParams[key]}`);
+        } else {
+            // Remove the segment if the parameter is missing
+            return acc.replace(`/:${key}`, '');
+        }
+    }, url).replace(/\/+$/, ''); // Remove any trailing slashes
+
+    console.log('Built URL:', builtUrl); // Print the final URL
+
+    return builtUrl;
 }
+
+

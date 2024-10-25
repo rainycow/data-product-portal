@@ -3,13 +3,13 @@ from uuid import UUID
 
 from app.business_areas.schema import BusinessArea
 from app.data_product_memberships.schema import (
-    DataProductMembershipCreate,
     DataProductMembership,
+    DataProductMembershipCreate,
 )
 from app.data_products.status import DataProductStatus
 from app.data_products_datasets.schema import DataProductDatasetAssociation
 from app.shared.schema import ORMModel
-from app.tags.schema import TagCreate, Tag
+from app.tags.schema import Tag, TagCreate
 
 
 class BaseDataProduct(ORMModel):
@@ -41,3 +41,8 @@ class DataProduct(BaseDataProduct):
     memberships: list[DataProductMembership]
     business_area: BusinessArea
     about: Optional[str] = None
+
+
+class ModifiedDataProduct(ORMModel):
+    id: UUID
+    name: str

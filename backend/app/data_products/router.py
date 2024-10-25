@@ -1,16 +1,22 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import requests
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.auth.auth import get_authenticated_user
 from app.data_product_memberships.enums import DataProductUserRole
+from app.data_products.model import ModifiedDataProduct
 from app.data_products.schema import (
     DataProductAboutUpdate,
     DataProductCreate,
     DataProductUpdate,
 )
-from app.data_products.schema_get import DataProductGet, DataProductsGet
+from app.data_products.schema_get import (
+    DataProductGet,
+    DataProductsGet,
+    ModifiedDataProductGet,
+)
 from app.data_products.service import DataProductService
 from app.database.database import get_db_session
 from app.dependencies import OnlyWithProductAccess
@@ -20,7 +26,9 @@ router = APIRouter(prefix="/data_products", tags=["data_products"])
 
 
 @router.get("")
-def get_data_products(db: Session = Depends(get_db_session)) -> list[DataProductsGet]:
+def get_data_products(
+    db: Session = Depends(get_db_session),
+) -> list[DataProductsGet]:
     return DataProductService().get_data_products(db)
 
 
@@ -32,7 +40,9 @@ def get_user_data_products(
 
 
 @router.get("/{id}")
-def get_data_product(id: UUID, db: Session = Depends(get_db_session)) -> DataProductGet:
+def get_data_product(
+    id: UUID, db: Session = Depends(get_db_session)
+) -> ModifiedDataProductGet:
     return DataProductService().get_data_product(id, db)
 
 
@@ -73,7 +83,9 @@ def create_data_product(
         404: {
             "description": "Data Product not found",
             "content": {
-                "application/json": {"example": {"detail": "Data Product id not found"}}
+                "application/json": {
+                    "example": {"detail": "Data Product id not found"}
+                }
             },
         }
     },
@@ -89,14 +101,18 @@ def remove_data_product(id: UUID, db: Session = Depends(get_db_session)):
         404: {
             "description": "Data Product not found",
             "content": {
-                "application/json": {"example": {"detail": "Data Product id not found"}}
+                "application/json": {
+                    "example": {"detail": "Data Product id not found"}
+                }
             },
         }
     },
     dependencies=[Depends(OnlyWithProductAccess())],
 )
 def update_data_product(
-    id: UUID, data_product: DataProductUpdate, db: Session = Depends(get_db_session)
+    id: UUID,
+    data_product: DataProductUpdate,
+    db: Session = Depends(get_db_session),
 ):
     return DataProductService().update_data_product(id, data_product, db)
 
@@ -107,7 +123,9 @@ def update_data_product(
         404: {
             "description": "Data Product not found",
             "content": {
-                "application/json": {"example": {"detail": "Data Product id not found"}}
+                "application/json": {
+                    "example": {"detail": "Data Product id not found"}
+                }
             },
         }
     },
@@ -127,13 +145,17 @@ def update_data_product_about(
         400: {
             "description": "Dataset not found",
             "content": {
-                "application/json": {"example": {"detail": "Dataset not found"}}
+                "application/json": {
+                    "example": {"detail": "Dataset not found"}
+                }
             },
         },
         404: {
             "description": "Data Product not found",
             "content": {
-                "application/json": {"example": {"detail": "Data Product id not found"}}
+                "application/json": {
+                    "example": {"detail": "Data Product id not found"}
+                }
             },
         },
     },
@@ -156,13 +178,17 @@ def link_dataset_to_data_product(
         400: {
             "description": "Dataset not found",
             "content": {
-                "application/json": {"example": {"detail": "Dataset not found"}}
+                "application/json": {
+                    "example": {"detail": "Dataset not found"}
+                }
             },
         },
         404: {
             "description": "Data Product not found",
             "content": {
-                "application/json": {"example": {"detail": "Data Product id not found"}}
+                "application/json": {
+                    "example": {"detail": "Data Product id not found"}
+                }
             },
         },
     },
@@ -173,11 +199,15 @@ def unlink_dataset_from_data_product(
     dataset_id: UUID,
     db: Session = Depends(get_db_session),
 ):
-    return DataProductService().unlink_dataset_from_data_product(id, dataset_id, db)
+    return DataProductService().unlink_dataset_from_data_product(
+        id, dataset_id, db
+    )
 
 
 @router.get("/{id}/role", dependencies=[Depends(OnlyWithProductAccess())])
-def get_role(id: UUID, environment: str, db: Session = Depends(get_db_session)) -> str:
+def get_role(
+    id: UUID, environment: str, db: Session = Depends(get_db_session)
+) -> str:
     return DataProductService().get_data_product_role_arn(id, environment, db)
 
 
@@ -200,7 +230,9 @@ def get_signin_url(
     "/{id}/conveyor_notebook_url",
     dependencies=[Depends(OnlyWithProductAccess())],
 )
-def get_conveyor_notebook_url(id: UUID, db: Session = Depends(get_db_session)) -> str:
+def get_conveyor_notebook_url(
+    id: UUID, db: Session = Depends(get_db_session)
+) -> str:
     return DataProductService().get_conveyor_notebook_url(id, db)
 
 
@@ -208,5 +240,7 @@ def get_conveyor_notebook_url(id: UUID, db: Session = Depends(get_db_session)) -
     "/{id}/conveyor_ide_url",
     dependencies=[Depends(OnlyWithProductAccess())],
 )
-def get_conveyor_ide_url(id: UUID, db: Session = Depends(get_db_session)) -> str:
+def get_conveyor_ide_url(
+    id: UUID, db: Session = Depends(get_db_session)
+) -> str:
     return DataProductService().get_conveyor_ide_url(id, db)

@@ -26,3 +26,4 @@ WORKDIR /app
 
 EXPOSE 8080
 ENTRYPOINT ["sh","/app/entrypoint.sh"]
+

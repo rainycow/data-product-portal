@@ -32,11 +32,14 @@ engine = create_engine(get_url(), connect_args={})
 
 
 class MyQuery(Query):
-    def get_one(self, primary_key_type: Column, primary_key_value: Any) -> BaseORM:
+    def get_one(
+        self, primary_key_type: Column, primary_key_value: Any
+    ) -> BaseORM:
         result = self.filter(primary_key_type == primary_key_value).all()
         if not result or len(result) == 0:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="object not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="object not found",
             )
         if len(result) > 1:
             raise HTTPException(

@@ -2,10 +2,11 @@ import json
 from datetime import datetime
 from typing import List
 from urllib import parse
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 import pytz
+import requests
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 from sqlalchemy import asc
@@ -13,7 +14,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.auth.credentials import AWSCredentials
 from app.core.aws.boto3_clients import get_client
-from app.core.aws.refresh_infrastructure_lambda import RefreshInfrastructureLambda
+from app.core.aws.refresh_infrastructure_lambda import (
+    RefreshInfrastructureLambda,
+)
 from app.core.conveyor.notebook_builder import CONVEYOR_SERVICE
 from app.data_product_memberships.enums import (
     DataProductMembershipStatus,
@@ -22,19 +25,29 @@ from app.data_product_memberships.enums import (
 from app.data_product_memberships.model import DataProductMembership
 from app.data_product_memberships.schema import DataProductMembershipCreate
 from app.data_products.model import DataProduct as DataProductModel
+from app.data_products.model import (
+    ModifiedDataProduct as ModifiedDataProductModel,
+)
 from app.data_products.model import ensure_data_product_exists
 from app.data_products.schema import (
     DataProduct,
     DataProductAboutUpdate,
     DataProductCreate,
     DataProductUpdate,
+    ModifiedDataProduct,
 )
-from app.data_products.schema_get import DataProductGet, DataProductsGet
+from app.data_products.schema_get import (
+    DataProductGet,
+    DataProductsGet,
+    ModifiedDataProductGet,
+)
 from app.data_products_datasets.enums import DataProductDatasetLinkStatus
 from app.data_products_datasets.model import (
     DataProductDatasetAssociation as DataProductDatasetModel,
 )
-from app.data_products_datasets.schema import DataProductDatasetAssociationCreate
+from app.data_products_datasets.schema import (
+    DataProductDatasetAssociationCreate,
+)
 from app.datasets.enums import DatasetAccessType
 from app.datasets.model import ensure_dataset_exists
 from app.environments.model import Environment as EnvironmentModel
@@ -44,19 +57,45 @@ from app.users.schema import User
 
 
 class DataProductService:
-    def get_data_product(self, id: UUID, db: Session) -> DataProductGet:
-        data_product = (
-            db.query(DataProductModel)
-            .options(
-                joinedload(DataProductModel.dataset_links),
-            )
-            .filter(DataProductModel.id == id)
-            .first()
+    def get_data_product(
+        self, id: UUID, db: Session
+    ) -> ModifiedDataProductGet:
+
+        url = "https://dbc-8ccb2fdc-c542.cloud.databricks.com/api/2.0/lineage-tracking/table-lineage"
+        # Headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "-",
+        }
+
+        # Data payload
+        data = {
+            "table_name": "dmp_sellin_dev.gold.dim_customer",
+            "include_entity_lineage": "true",
+        }
+
+        # Use netrc for authentication if needed, or replace with HTTPBasicAuth(username, password)
+        # Assuming the `.netrc` file is properly set up, the `auth` parameter can be omitted.
+        response = requests.get(url, params=data, headers=headers)
+        response = response.json()
+        ret = {}
+        for table in response["upstreams"]:
+            id = uuid4()
+            ret[id] = table["tableInfo"]["name"]
+
+        for id, table_name in ret.items():
+            lineage_record = ModifiedDataProductModel(id=id, name=table_name)
+            db.add(lineage_record)
+        db.commit()
+
+        data_product = db.query(ModifiedDataProductModel).filter(
+            ModifiedDataProductModel.id == id
         )
 
         if not data_product:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Data Product not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Data Product not found",
             )
         return data_product
 
@@ -125,7 +164,10 @@ class DataProductService:
         return data_product
 
     def create_data_product(
-        self, data_product: DataProductCreate, db: Session, authenticated_user: User
+        self,
+        data_product: DataProductCreate,
+        db: Session,
+        authenticated_user: User,
     ) -> dict[str, UUID]:
         data_product = self._update_users(data_product, db)
         data_product = DataProductModel(**data_product.parse_pydantic_schema())
@@ -172,7 +214,10 @@ class DataProductService:
         )
 
     def _update_memberships(
-        self, data_product: DataProduct, membership_data: List[dict], db: Session
+        self,
+        data_product: DataProduct,
+        membership_data: List[dict],
+        db: Session,
     ):
         existing_memberships = data_product.memberships
         request_user_ids = set(m["user_id"] for m in membership_data)
@@ -192,13 +237,16 @@ class DataProductService:
                 data_product.memberships.append(new_membership)
 
         memberships_to_remove = [
-            m for m in existing_memberships if m.user_id not in request_user_ids
+            m
+            for m in existing_memberships
+            if m.user_id not in request_user_ids
         ]
         for membership in memberships_to_remove:
             data_product.memberships.remove(membership)
 
         if not any(
-            m.role == DataProductUserRole.OWNER for m in data_product.memberships
+            m.role == DataProductUserRole.OWNER
+            for m in data_product.memberships
         ):
             raise ValueError("At least one owner membership is required.")
 
@@ -214,7 +262,9 @@ class DataProductService:
             elif k == "dataset_links":
                 current_data_product.dataset_links = []
                 for dataset in v:
-                    dataset_model = ensure_dataset_exists(dataset.dataset_id, db)
+                    dataset_model = ensure_dataset_exists(
+                        dataset.dataset_id, db
+                    )
                     dataset = DataProductDatasetModel(
                         dataset_id=dataset_model.id,
                         data_product_id=current_data_product.id,
@@ -279,7 +329,9 @@ class DataProductService:
         RefreshInfrastructureLambda().trigger()
         return {"id": dataset_link.id}
 
-    def unlink_dataset_from_data_product(self, id: UUID, dataset_id: UUID, db: Session):
+    def unlink_dataset_from_data_product(
+        self, id: UUID, dataset_id: UUID, db: Session
+    ):
         ensure_dataset_exists(dataset_id, db)
         data_product = ensure_data_product_exists(id, db)
         data_product_dataset = next(
@@ -299,7 +351,9 @@ class DataProductService:
         db.commit()
         RefreshInfrastructureLambda().trigger()
 
-    def get_data_product_role_arn(self, id: UUID, environment: str, db: Session) -> str:
+    def get_data_product_role_arn(
+        self, id: UUID, environment: str, db: Session
+    ) -> str:
         environment_context = (
             db.query(EnvironmentModel)
             .get_one(EnvironmentModel.name, environment)
@@ -330,7 +384,9 @@ class DataProductService:
         self, id: UUID, environment: str, authenticated_user: User, db: Session
     ) -> str:
         role = self.get_data_product_role_arn(id, environment, db)
-        json_credentials = self.get_aws_temporary_credentials(role, authenticated_user)
+        json_credentials = self.get_aws_temporary_credentials(
+            role, authenticated_user
+        )
 
         url_credentials = {}
         url_credentials["sessionId"] = json_credentials.AccessKeyId
@@ -342,7 +398,9 @@ class DataProductService:
         SESSION_DURATION = 900
         request_parameters += f"&SessionDuration={SESSION_DURATION}"
         request_parameters += f"&Session={parse.quote_plus(json_dump)}"
-        request_url = "https://signin.aws.amazon.com/federation" + request_parameters
+        request_url = (
+            "https://signin.aws.amazon.com/federation" + request_parameters
+        )
 
         r = httpx.get(request_url)
 
@@ -350,10 +408,14 @@ class DataProductService:
 
         request_parameters = "?Action=login"
         request_parameters += "&Issuer=portal.demo1.conveyordata.com"
-        athena_link = "https://console.aws.amazon.com/athena/home#/query-editor"
+        athena_link = (
+            "https://console.aws.amazon.com/athena/home#/query-editor"
+        )
         request_parameters += f"&Destination={parse.quote_plus(athena_link)}"
         request_parameters += f"&SigninToken={signin_token['SigninToken']}"
-        request_url = "https://signin.aws.amazon.com/federation" + request_parameters
+        request_url = (
+            "https://signin.aws.amazon.com/federation" + request_parameters
+        )
 
         return request_url
 

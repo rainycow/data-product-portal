@@ -1,5 +1,7 @@
 import { ApiUrl, buildUrl } from '@/api/api-urls.ts';
 import { baseApiSlice } from '@/store/features/api/base-api-slice.ts';
+import { STATIC_TAG_ID, TagTypes } from '@/store/features/api/tag-types.ts';
+import { datasetsApiSlice } from '@/store/features/datasets/datasets-api-slice.ts';
 import {
     DataProductContract,
     DataProductCreate,
@@ -16,8 +18,6 @@ import {
     DataProductUpdateRequest,
     DataProductUpdateResponse,
 } from '@/types/data-product';
-import { STATIC_TAG_ID, TagTypes } from '@/store/features/api/tag-types.ts';
-import { datasetsApiSlice } from '@/store/features/datasets/datasets-api-slice.ts';
 
 export const dataProductTags: string[] = [
     TagTypes.DataProduct,
@@ -96,11 +96,17 @@ export const dataProductsApiSlice = baseApiSlice.enhanceEndpoints({ addTagTypes:
             ],
         }),
         getDataProductSignInUrl: builder.mutation<DataProductGetSignInUrlResponse, DataProductGetSignInUrlRequest>({
-            query: ({ id, environment }) => ({
-                url: buildUrl(ApiUrl.DataProductSignInUrl, { dataProductId: id }),
-                method: 'GET',
-                params: { environment },
-            }),
+            query: ({ id, environment }) => {
+                const url = id
+                    // ? buildUrl(ApiUrl.DataProductSignInUrl, { dataProductId: id }) // If id is provided, include it
+                buildUrl(ApiUrl.DataProductSignInUrl); // If id is not provided, use the base URL without it
+        
+                return {
+                    url,
+                    method: 'GET',
+                    params: { environment },
+                };
+            },
         }),
         getDataProductConveyorIDEUrl: builder.mutation<
             DataProductGetConveyorUrlResponse,
